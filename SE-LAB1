@@ -1,0 +1,207 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+// Structure to store product details
+struct Product {
+    char name[20];
+    int quantity;
+    float price;
+    float total;
+};
+
+// Function to add a new product to the file
+void addProduct(FILE *filePtr) {
+    struct Product product;
+
+    // Get product details from the user
+    printf("Enter the product name: ");
+    scanf("%s", product.name);
+
+    printf("Enter the quantity: ");
+    scanf("%d", &product.quantity);
+
+    printf("Enter the price: ");
+    scanf("%f", &product.price);
+
+    // Calculate the total amount
+    product.total = product.quantity * product.price;
+
+    // Write product details to the file
+    fprintf(filePtr, "%s %d %.2f %.2f\n", product.name, product.quantity, product.price, product.total);
+
+    printf("Product added successfully.\n");
+}
+
+// Function to update an existing product in the file
+void updateProduct(FILE *filePtr) {
+    struct Product product;
+    char nameToUpdate[20];
+    int found = 0;
+
+    // Get the name of the product to be updated
+    printf("Enter the product name to update: ");
+    scanf("%s", nameToUpdate);
+
+    // Create a temporary file for writing
+    FILE *tempFile = fopen("temp.txt", "w");
+    if (tempFile == NULL) {
+        printf("Error in opening the file.\n");
+        return;
+    }
+
+    // Iterate through the file to find and update the product
+    fseek(filePtr, 0, SEEK_SET); // Move to the beginning of the file
+    while (fscanf(filePtr, "%s %d %f %f", product.name, &product.quantity, &product.price, &product.total) == 4) {
+        if (strcmp(product.name, nameToUpdate) == 0) {
+            found = 1;
+
+            // Get the new quantity and price from the user
+            printf("Enter the new quantity: ");
+            scanf("%d", &product.quantity);
+
+            printf("Enter the new price: ");
+            scanf("%f", &product.price);
+
+            // Calculate the new total amount
+            product.total = product.quantity * product.price;
+
+            printf("Product updated successfully.\n");
+        }
+
+        // Write product details to the temporary file
+        fprintf(tempFile, "%s %d %.2f %.2f\n", product.name, product.quantity, product.price, product.total);
+    }
+
+    // Close the original and temporary files
+    fclose(filePtr);
+    fclose(tempFile);
+
+    // Replace the original file with the temporary file
+    remove("products.txt");
+    rename("temp.txt", "products.txt");
+
+    // Reopen the original file in append mode
+    filePtr = fopen("products.txt", "a+");
+
+    if (found == 0) {
+        printf("No such product exists.\n");
+    }
+}
+
+// Function to display the total order bill of all products in the file
+void displayBill(FILE *filePtr) {
+    struct Product product;
+    float totalBill = 0;
+    float gstRate = 0.18;
+
+    // Display header
+    printf("Product Details:\n");
+    printf("Name\tQuantity\tPrice\tTotal\n");
+
+    // Iterate through the file to display product details
+    fseek(filePtr, 0, SEEK_SET); // Move to the beginning of the file
+    while (fscanf(filePtr, "%s %d %f %f", product.name, &product.quantity, &product.price, &product.total) == 4) {
+        printf("%s\t%d\t\t%.2f\t%.2f\n", product.name, product.quantity, product.price, product.total);
+        totalBill += product.total;
+    }
+
+    // Display the total bill before and after GST
+    printf("Total bill before GST: %.2f\n", totalBill);
+    totalBill = totalBill + (totalBill * gstRate);
+    printf("Total bill after GST: %.2f\n", totalBill);
+}
+
+// Function to generate a report of the products in the file
+void generateReport(FILE *filePtr) {
+    struct Product product;
+    int productCount = 0;
+    float minPrice = 0;
+    float maxPrice = 0;
+    float avgPrice = 0;
+    float sumPrice = 0;
+
+    // Iterate through the file to gather statistics
+    fseek(filePtr, 0, SEEK_SET); // Move to the beginning of the file
+    while (fscanf(filePtr, "%s %d %f %f", product.name, &product.quantity, &product.price, &product.total) == 4) {
+        productCount++;
+        sumPrice += product.price;
+
+        if (productCount == 1) {
+            minPrice = product.price;
+            maxPrice = product.price;
+        } else {
+            // Update min and max prices if needed
+            if (product.price < minPrice) {
+                minPrice = product.price;
+            }
+
+            if (product.price > maxPrice) {
+                maxPrice = product.price;
+            }
+        }
+    }
+
+    // Calculate the average price
+    avgPrice = sumPrice / productCount;
+
+    // Display the product report
+    printf("Product Report:\n");
+    printf("Number of products: %d\n", productCount);
+    printf("Minimum price: %.2f\n", minPrice);
+    printf("Maximum price: %.2f\n", maxPrice);
+    printf("Average price: %.2f\n", avgPrice);
+}
+
+// Main function
+int main() {
+    FILE *filePtr;
+    int userChoice;
+
+    // Open the file in append mode
+    filePtr = fopen("products.txt", "a+");
+
+    // Check if the file is opened successfully
+    if (filePtr == NULL) {
+        printf("Error opening the file.\n");
+        exit(1);
+    }
+
+    // Menu-driven loop
+    while (1) {
+        // Display menu options
+        printf("\nMenu:\n");
+        printf("1. Add a new product\n");
+        printf("2. Update an existing product\n");
+        printf("3. Display total order bill\n");
+        printf("4. Generate product report\n");
+        printf("5. Exit\n");
+
+        // Get user choice
+        printf("Enter your choice: ");
+        scanf("%d", &userChoice);
+
+        // Perform the selected operation based on user choice
+        switch (userChoice) {
+            case 1:
+                addProduct(filePtr);
+                break;
+            case 2:
+                updateProduct(filePtr);
+                break;
+            case 3:
+                displayBill(filePtr);
+                break;
+            case 4:
+                generateReport(filePtr);
+                break;
+            case 5:
+                // Close the file and exit the program
+                fclose(filePtr);
+                exit(0);
+            default:
+                printf("Invalid choice.\n");
+        }
+    }
+
+    return 0;
+}
